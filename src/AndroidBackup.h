@@ -14,8 +14,10 @@
 #include <codecvt>
 #include <locale>
 #include <zlib.h>
-#include <openssl/evp.h>
 #include <openssl/sha.h>
+#include <openssl/md5.h>
+#include <openssl/evp.h>
+#include <openssl/hmac.h>
 #include <openssl/kdf.h>
 
 using namespace std;
@@ -89,16 +91,16 @@ private:
         bool DEBUG = true;
 
 public:
-        //¹¦ÄÜÐÔµÄº¯Êý
+        //åŠŸèƒ½æ€§çš„å‡½æ•°
         bool pathExists(const char* path);
         std::vector<uint8_t> hexToBytes(const std::string& hex);
         string* byteToHexStr(unsigned char byte_arr[], int arr_len);
 
 
-        //Android±¸·Ý½âÃÜºËÐÄ¹¦ÄÜµÄº¯Êý
+        //Androidå¤‡ä»½è§£å¯†æ ¸å¿ƒåŠŸèƒ½çš„å‡½æ•°
         bool extractAsTar(string backupFilename, string tarFilePath, string password);
         string readHeaderLine(istream& in);
-        std::vector<char> chunkReader(std::ifstream& f, int chunkSize = CHUNK_SIZE);
+        std::vector<unsigned char> chunkReader(std::ifstream& f, int chunkSize = CHUNK_SIZE);
         int decompress(string tmptarFilePath, string tarFilePath);
         int pbkdf2(const char* password, int password_len, const byte* salt, int salt_len, int iterations, byte* out_key);
         int aes_decrypt(unsigned char* ciphertext, int ciphertext_len, unsigned char* key, unsigned char* iv, unsigned char* plaintext);
