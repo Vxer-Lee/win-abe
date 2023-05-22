@@ -1,31 +1,32 @@
 #include "AndroidBackup.h"
+#include <openssl/aes.h>
 
 using namespace std;
 
 
 /*
-* Android backup±¸·İ½âÃÜ´úÂë£¬»á°Ñ¼ÓÃÜµÄAndroid backup±¸·İÎÄ¼ş£¬½âÃÜºóÊä³ö³Éxxx.tar¸ñÊ½Êı¾İ
-* ²ÎÊı£º±¸·İÎÄ¼şÂ·¾¶£¬Êä³öºóµÄ.tarÎÄ¼şÂ·¾¶,±¸·İÃÜÂë
+* Android backupå¤‡ä»½è§£å¯†ä»£ç ï¼Œä¼šæŠŠåŠ å¯†çš„Android backupå¤‡ä»½æ–‡ä»¶ï¼Œè§£å¯†åè¾“å‡ºæˆxxx.taræ ¼å¼æ•°æ®
+* å‚æ•°ï¼šå¤‡ä»½æ–‡ä»¶è·¯å¾„ï¼Œè¾“å‡ºåçš„.taræ–‡ä»¶è·¯å¾„,å¤‡ä»½å¯†ç 
 * 
-* ±¸·İÃÜÂëÈç¹û´íÎóµÄ»°£¬»áÌáÊ¾ÃÜÂë´íÎó
-* ±¸·İÎÄ¼ş»á°´ÕÕÃ¿´Î128*1024×Ö½Ú½øĞĞ¶ÁÈ¡£¬²¢ÇÒ½øĞĞ½âÃÜÔÙ½âÑ¹
-* ×îºó»á³ÖĞø½«½âÑ¹ºóÎÄ¼şÊä³öµ½xxx.tarÎÄ¼şÀïÃæ¡£
+* å¤‡ä»½å¯†ç å¦‚æœé”™è¯¯çš„è¯ï¼Œä¼šæç¤ºå¯†ç é”™è¯¯
+* å¤‡ä»½æ–‡ä»¶ä¼šæŒ‰ç…§æ¯æ¬¡128*1024å­—èŠ‚è¿›è¡Œè¯»å–ï¼Œå¹¶ä¸”è¿›è¡Œè§£å¯†å†è§£å‹
+* æœ€åä¼šæŒç»­å°†è§£å‹åæ–‡ä»¶è¾“å‡ºåˆ°xxx.taræ–‡ä»¶é‡Œé¢ã€‚
 * 
-* Ô­Àí£º
-*      Android backup±¸·İÎÄ¼şÔ­Àí£¬ÎÒÔÚÏÂÃæ´úÂëÀïÃæ°´ÕÕĞòºÅ1.2.3.4½øĞĞ×¢ÊÍÁË£¬»á·Ö±ğ¶ÁÈ¡ÓĞÓÃµÄÊı¾İ
-*      È»ºó½øĞĞÅĞ¶Ï±¸·İÎÄ¼şÊÇ·ñ¼ÓÃÜ£¬ÊôÓÚÊ²Ã´¼ÓÃÜ£¬Ö®ºó½øĞĞÃÜÔ¿µÄÌáÈ¡£¬È»ºóÃÜÔ¿×ª»»£¬×îºó×ª»»³ÉaesµÄÃÜÔ¿
-*      Ö®ºó½«±¸·İÎÄ¼ş¼ÓÃÜµÄÊı¾İ£¬½øĞĞAES½âÃÜ£¬½âÃÜºóÔÙ½øĞĞzlib½âÑ¹£¬×îºó¾ÍÊÇAndroid backup±¸·İÎÄ¼şµÄÄÚÈİÁË¡£
+* åŸç†ï¼š
+*      Android backupå¤‡ä»½æ–‡ä»¶åŸç†ï¼Œæˆ‘åœ¨ä¸‹é¢ä»£ç é‡Œé¢æŒ‰ç…§åºå·1.2.3.4è¿›è¡Œæ³¨é‡Šäº†ï¼Œä¼šåˆ†åˆ«è¯»å–æœ‰ç”¨çš„æ•°æ®
+*      ç„¶åè¿›è¡Œåˆ¤æ–­å¤‡ä»½æ–‡ä»¶æ˜¯å¦åŠ å¯†ï¼Œå±äºä»€ä¹ˆåŠ å¯†ï¼Œä¹‹åè¿›è¡Œå¯†é’¥çš„æå–ï¼Œç„¶åå¯†é’¥è½¬æ¢ï¼Œæœ€åè½¬æ¢æˆaesçš„å¯†é’¥
+*      ä¹‹åå°†å¤‡ä»½æ–‡ä»¶åŠ å¯†çš„æ•°æ®ï¼Œè¿›è¡ŒAESè§£å¯†ï¼Œè§£å¯†åå†è¿›è¡Œzlibè§£å‹ï¼Œæœ€åå°±æ˜¯Android backupå¤‡ä»½æ–‡ä»¶çš„å†…å®¹äº†ã€‚
 */
 bool AndroidBackup::extractAsTar(string backupFilename,string tarfilePath,string password)
 {
     try{
         if(!pathExists(backupFilename.c_str())){
-            printf("±¸·İÎÄ¼ş²»´æÔÚ:%s\n",backupFilename.c_str());
+            printf("å¤‡ä»½æ–‡ä»¶ä¸å­˜åœ¨:%s\n",backupFilename.c_str());
             return false;
         }
         ifstream rawInStream = ifstream(backupFilename.c_str(),ios::binary);
         if(!rawInStream.is_open()){
-            cout << "¶ÁÈ¡±¸·İÎÄ¼şÊ§°Ü" << backupFilename.c_str() << "[Çë¼ì²éÂ·¾¶ÊÇ·ñÕıÈ·£¬»òÕß¹ÜÀíÔ±È¨ÏŞ!]" << endl;
+            cout << "è¯»å–å¤‡ä»½æ–‡ä»¶å¤±è´¥" << backupFilename.c_str() << "[è¯·æ£€æŸ¥è·¯å¾„æ˜¯å¦æ­£ç¡®ï¼Œæˆ–è€…ç®¡ç†å‘˜æƒé™!]" << endl;
             return false;
         }
         
@@ -41,7 +42,7 @@ bool AndroidBackup::extractAsTar(string backupFilename,string tarfilePath,string
         }
         int version = stoi(versionStr);
         if(version < BACKUP_FILE_V1 || version > BACKUP_FILE_V5){
-            cout << "±§Ç¸,ÔİÊ±²»Ö§³Ö¸Ã°æ±¾µÄ°²×¿±¸·İ½âÃÜ!\n" << endl;
+            cout << "æŠ±æ­‰,æš‚æ—¶ä¸æ”¯æŒè¯¥ç‰ˆæœ¬çš„å®‰å“å¤‡ä»½è§£å¯†!\n" << endl;
             return false;
         }
 
@@ -59,7 +60,7 @@ bool AndroidBackup::extractAsTar(string backupFilename,string tarfilePath,string
         }
         bool isEncrypted = false;
         
-        //AES·½Ê½¼Ó½âÃÜ
+        //AESæ–¹å¼åŠ è§£å¯†
         if(encryptionAlg.compare(ENCRYPTION_ALGORTTHM_NAME) == 0 ){
             isEncrypted = true;
             string userSaltHex = readHeaderLine(rawInStream);//5
@@ -104,7 +105,7 @@ bool AndroidBackup::extractAsTar(string backupFilename,string tarfilePath,string
             memcpy(masterKeyBlob,vectorMasterKeyBlob.data(),vectorMasterKeyBlob.size());
 
 
-            //½âÃÜmasterkeyBlob
+            //è§£å¯†masterkeyBlob
             /*
                a5 c6 4a c4 09 62 aa 41 cc 37 8b 37 1e 14 3d 1a 
                9e 88 74 d7 e4 54 18 4b ed 0d 10 9c af 14 77 ed
@@ -115,7 +116,7 @@ bool AndroidBackup::extractAsTar(string backupFilename,string tarfilePath,string
             int ret = aes_decrypt(masterKeyBlob, vectorMasterKeyBlob.size(), aeskey, IV, &block_data[0]);
             if (ret == -1)
             {
-                printf("aes½âÃÜÊ§°Ü£¬Ó¦¸ÃÊÇÃÜÂë´íÎó!\n");
+                printf("aesè§£å¯†å¤±è´¥ï¼Œåº”è¯¥æ˜¯å¯†ç é”™è¯¯!\n");
                 return false;
             }
             //parse decrypted blob
@@ -139,7 +140,7 @@ bool AndroidBackup::extractAsTar(string backupFilename,string tarfilePath,string
                 cout << "check value: " << byteToHexStr(ck, nckLen)->c_str() << endl;
             }
 
-            //ÃÜÂëÑéÖ¤
+            //å¯†ç éªŒè¯
             //ck2 = PBKDF2(toBytes2, header['mkSumSalt'], Nck, header['round'])
             byte ck2[100] = { 0 };
             std::vector<unsigned char> vectormkBytes(nmkLen);
@@ -147,100 +148,127 @@ bool AndroidBackup::extractAsTar(string backupFilename,string tarfilePath,string
             string utf8str = masterKeyJavaConversion(vectormkBytes);
 
             pbkdf2((char*)utf8str.c_str(), utf8str.size(), ckSalt, vectorCkSalt.size(), PBKDF2_HASH_ROUNDS, ck2);
-            cout << "ÃÜÂëÑéÖ¤£º" << endl;
-            cout << "ÎÄ¼şµÄ  hash value: " << byteToHexStr(ck,  nckLen)->c_str() << endl;
-            cout << "ÄãÃÜÂëµÄhash value: " << byteToHexStr(ck2, nckLen)->c_str() << endl;
+            cout << "å¯†ç éªŒè¯ï¼š" << endl;
+            cout << "æ–‡ä»¶çš„  hash value: " << byteToHexStr(ck,  nckLen)->c_str() << endl;
+            cout << "ä½ å¯†ç çš„hash value: " << byteToHexStr(ck2, nckLen)->c_str() << endl;
 
             if (byteToHexStr(ck, nckLen)->compare(byteToHexStr(ck2, nckLen)->c_str()) != 0)
             {
-                cout << "±¸·İÃÜÂë´íÎó!" << endl;
+                cout << "å¤‡ä»½å¯†ç é”™è¯¯!" << endl;
+                return false;
             }
             else {
-                cout << "±¸·İÃÜÂëÕıÈ·:" << password << endl;
+                cout << "å¤‡ä»½å¯†ç æ­£ç¡®:" << password << endl;
             }
 
             byte* _aeskey = mk;
             byte* _aesiv = mkIv;
-            cout << "AESÃÜÔ¿:" << byteToHexStr(mk, nmkLen)->c_str() << endl;
+            cout << "AESå¯†é’¥:" << byteToHexStr(mk, nmkLen)->c_str() << endl;
             cout << "AES IV:" << byteToHexStr(mkIv, nmkIvLen)->c_str() << endl;
-            int Bufferp = rawInStream.tellg();
-            rawInStream.close();
-            
 
-            //ÀûÓÃWindows µÄÎÄ¼şÄÚ´æÓ³Éä£¬¶ÁÈ¡´óÎÄ¼ş²¢ÇÒĞ´³ö½âÃÜºóµÄÊı¾İ
-            DWORD dwSize = 0;
-            HANDLE hbackupFile = CreateFile(backupFilename.c_str(), GENERIC_READ, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+            AES_KEY aes;
+            if (AES_set_decrypt_key(_aeskey, 256, &aes) < 0) {
+                rawInStream.close();
+                return false;
+            }
+
+            //è§£å¯†å®‰å“å¤‡ä»½æ–‡ä»¶ï¼Œè§£å¯†å‡ºæ¥åº”è¯¥æ˜¯ä¸€ä¸ªå‹ç¼©åŒ…æ•°æ® .zipæ•°æ®
+            //int Bufferp = rawInStream.tellg();
             char tmpFilePath[MAX_PATH] = { 0 };
             wsprintfA(tmpFilePath, "%s.tmp", tarfilePath.c_str());
-            HANDLE htarFile    = CreateFile(tmpFilePath, GENERIC_READ | GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-            if (hbackupFile == INVALID_HANDLE_VALUE ||htarFile == INVALID_HANDLE_VALUE)
-            {
-                return false;
-            }
-            dwSize = GetFileSize(hbackupFile, NULL);
-            //´´½¨ÎÄ¼şÓ³Éä
-            HANDLE mapping_file_backup = CreateFileMapping(hbackupFile, NULL, PAGE_READONLY, 0, dwSize,NULL);
-            if (mapping_file_backup == NULL) {
-                cout << "ÄÚ´æÓ³ÉäÊ§°Ü!1" << endl;
-                CloseHandle(hbackupFile);
-                CloseHandle(htarFile);
-                return false;
-            }
-            HANDLE mapping_file_tarfile = CreateFileMapping(htarFile, NULL, PAGE_READWRITE, 0,dwSize , NULL);
-            if (mapping_file_tarfile == NULL) {
-                cout << "ÄÚ´æÓ³ÉäÊ§°Ü!2" << endl;
-                CloseHandle(mapping_file_backup);
-                CloseHandle(hbackupFile);
-                CloseHandle(htarFile);
-                return false;
-            }
-            //ÄÚ´æÓ³Éä
-            LPVOID mappingview_backup = MapViewOfFile(
-                mapping_file_backup,
-                FILE_MAP_READ,
-                0,
-                0,
-                dwSize
-            );
-            if (mappingview_backup == NULL)
-            {
-                cout << "ÄÚ´æÓ³ÉäÊ§°Ü!3" << endl;
-                CloseHandle(mapping_file_tarfile);
-                CloseHandle(mapping_file_backup);
-                CloseHandle(hbackupFile);
-                CloseHandle(htarFile);
-                return false;
-            }
-            LPVOID mappingview_tarfile = MapViewOfFile(
-                mapping_file_tarfile,
-                FILE_MAP_WRITE,
-                0,
-                0,
-                dwSize
-            );
-            if (mappingview_tarfile == NULL)
-            {
-                cout << "ÄÚ´æÓ³ÉäÊ§°Ü!4" << endl;
-                cout << "GetLastError()" << GetLastError() << endl;
-                UnmapViewOfFile(mappingview_backup);
-                CloseHandle(mapping_file_tarfile);
-                CloseHandle(mapping_file_backup);
-                CloseHandle(hbackupFile);
-                CloseHandle(htarFile);
-                return false;
-            }
-            int outlen = aes_decrypt((byte*)mappingview_backup + Bufferp, dwSize-Bufferp, _aeskey, _aesiv, (byte*)mappingview_tarfile);
+            FILE* ftmpFile = fopen(tmpFilePath, "ab");
 
-            UnmapViewOfFile(mappingview_tarfile);
-            UnmapViewOfFile(mappingview_backup);
-            CloseHandle(mapping_file_tarfile);
-            CloseHandle(mapping_file_backup);
-            CloseHandle(hbackupFile);
-            CloseHandle(htarFile);
+            byte* output = new byte[CHUNK_SIZE];
+            memset(output, 0, CHUNK_SIZE);
 
-            //zlib½âÑ¹Ëõ
+            while (1)
+            {
+                std::vector<unsigned char> data = chunkReader(rawInStream);
+                if (data.size() == 0)
+                {
+                    fclose(ftmpFile);
+                    break;
+                }
+                AES_cbc_encrypt(data.data(), output, CHUNK_SIZE, &aes, _aesiv, AES_DECRYPT);
+                fwrite(output, CHUNK_SIZE, 1, ftmpFile);
+            }
+            
+            //zlibè§£å‹ç¼©
             decompress(tmpFilePath, tarfilePath);
             DeleteFile(tmpFilePath);
+
+            ////åˆ©ç”¨Windows çš„æ–‡ä»¶å†…å­˜æ˜ å°„ï¼Œè¯»å–å¤§æ–‡ä»¶å¹¶ä¸”å†™å‡ºè§£å¯†åçš„æ•°æ®, ã€æ”¾å¼ƒè¯¥æ–¹æ³•ï¼Œå¯èƒ½ä¼šå¯¼è‡´å†…å­˜æ— æ³•ç”³è¯·ã€‘
+            //DWORD dwSize = 0;
+            //HANDLE hbackupFile = CreateFile(backupFilename.c_str(), GENERIC_READ, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+            ////char tmpFilePath[MAX_PATH] = { 0 };
+            //wsprintfA(tmpFilePath, "%s.tmp", tarfilePath.c_str());
+            //HANDLE htarFile    = CreateFile(tmpFilePath, GENERIC_READ | GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+            //if (hbackupFile == INVALID_HANDLE_VALUE ||htarFile == INVALID_HANDLE_VALUE)
+            //{
+            //    return false;
+            //}
+            //dwSize = GetFileSize(hbackupFile, NULL);
+            ////åˆ›å»ºæ–‡ä»¶æ˜ å°„
+            //HANDLE mapping_file_backup = CreateFileMapping(hbackupFile, NULL, PAGE_READONLY, 0, dwSize,NULL);
+            //if (mapping_file_backup == NULL) {
+            //    cout << "å†…å­˜æ˜ å°„å¤±è´¥!1" << endl;
+            //    CloseHandle(hbackupFile);
+            //    CloseHandle(htarFile);
+            //    return false;
+            //}
+            //HANDLE mapping_file_tarfile = CreateFileMapping(htarFile, NULL, PAGE_READWRITE, 0,dwSize , NULL);
+            //if (mapping_file_tarfile == NULL) {
+            //    cout << "å†…å­˜æ˜ å°„å¤±è´¥!2" << endl;
+            //    CloseHandle(mapping_file_backup);
+            //    CloseHandle(hbackupFile);
+            //    CloseHandle(htarFile);
+            //    return false;
+            //}
+            ////å†…å­˜æ˜ å°„
+            //LPVOID mappingview_backup = MapViewOfFile(
+            //    mapping_file_backup,
+            //    FILE_MAP_READ,
+            //    0,
+            //    0,
+            //    dwSize
+            //);
+            //if (mappingview_backup == NULL)
+            //{
+            //    cout << "å†…å­˜æ˜ å°„å¤±è´¥!3" << endl;
+            //    CloseHandle(mapping_file_tarfile);
+            //    CloseHandle(mapping_file_backup);
+            //    CloseHandle(hbackupFile);
+            //    CloseHandle(htarFile);
+            //    return false;
+            //}
+            //LPVOID mappingview_tarfile = MapViewOfFile(
+            //    mapping_file_tarfile,
+            //    FILE_MAP_WRITE,
+            //    0,
+            //    0,
+            //    dwSize
+            //);
+            //if (mappingview_tarfile == NULL)
+            //{
+            //    cout << "å†…å­˜æ˜ å°„å¤±è´¥!4" << endl;
+            //    cout << "GetLastError()" << GetLastError() << endl;
+            //    UnmapViewOfFile(mappingview_backup);
+            //    CloseHandle(mapping_file_tarfile);
+            //    CloseHandle(mapping_file_backup);
+            //    CloseHandle(hbackupFile);
+            //    CloseHandle(htarFile);
+            //    return false;
+            //}
+            ////int outlen = aes_decrypt((byte*)mappingview_backup + Bufferp, dwSize-Bufferp, _aeskey, _aesiv, (byte*)mappingview_tarfile);
+
+            ////UnmapViewOfFile(mappingview_tarfile);
+            ////UnmapViewOfFile(mappingview_backup);
+            ////CloseHandle(mapping_file_tarfile);
+            ////CloseHandle(mapping_file_backup);
+            ////CloseHandle(hbackupFile);
+            ////CloseHandle(htarFile);
+
+
             //---------------------------------------------------
 
             delete IV;
@@ -262,11 +290,11 @@ bool AndroidBackup::extractAsTar(string backupFilename,string tarfilePath,string
 }
 
 /*
-* ¶ÁÈ¡Android backup±¸·İÎÄ¼şµÄÎÄ¼şÍ·
-* ¾ßÌå²Ù×÷ÊÖ·¨¾ÍÊÇÒ»ĞĞÒ»ĞĞ¶ÁÈ¡£¬Ã¿ĞĞ¶ÁÈ¡µ½ÒÔ0x0A '\n'½áÎ²¡£
-* ²ÎÊı£ºÎÄ¼şÁ÷
+* è¯»å–Android backupå¤‡ä»½æ–‡ä»¶çš„æ–‡ä»¶å¤´
+* å…·ä½“æ“ä½œæ‰‹æ³•å°±æ˜¯ä¸€è¡Œä¸€è¡Œè¯»å–ï¼Œæ¯è¡Œè¯»å–åˆ°ä»¥0x0A '\n'ç»“å°¾ã€‚
+* å‚æ•°ï¼šæ–‡ä»¶æµ
 *
-* ·µ»Ø£ºÃ¿ĞĞµÄÎÄ±¾Êı¾İ
+* è¿”å›ï¼šæ¯è¡Œçš„æ–‡æœ¬æ•°æ®
 */
 string AndroidBackup::readHeaderLine(istream& in) {
     int c;
@@ -280,14 +308,14 @@ string AndroidBackup::readHeaderLine(istream& in) {
 }
 
 /*
-* ¶ÁÈ¡Android backup±¸·İÎÄ¼şÊ£ÏÂµÄÄÚÈİ£¬Ê£ÏÂµÄÄÚÈİ¾ÍÊÇ±¸·İÎÄ¼şµÄÖ÷ÌåÄÚÈİ£¬±»Ñ¹ËõºÍ¼ÓÃÜÁË
+* è¯»å–Android backupå¤‡ä»½æ–‡ä»¶å‰©ä¸‹çš„å†…å®¹ï¼Œå‰©ä¸‹çš„å†…å®¹å°±æ˜¯å¤‡ä»½æ–‡ä»¶çš„ä¸»ä½“å†…å®¹ï¼Œè¢«å‹ç¼©å’ŒåŠ å¯†äº†
 *
-* ²ÎÊı£ºÎÄ¼şÁ÷£¬Ã¿´Î¶ÁÈ¡µÄ´óĞ¡ÊÇ128*1024×Ö½Ú£¬Ò²¾ÍÊÇ0x20000
-* ·µ»ØÖµ£º¶ÁÈ¡µ½µÄÊı¾İ
+* å‚æ•°ï¼šæ–‡ä»¶æµï¼Œæ¯æ¬¡è¯»å–çš„å¤§å°æ˜¯128*1024å­—èŠ‚ï¼Œä¹Ÿå°±æ˜¯0x20000
+* è¿”å›å€¼ï¼šè¯»å–åˆ°çš„æ•°æ®
 */
-std::vector<char> AndroidBackup::chunkReader(std::ifstream& f, int chunkSize) {
-    std::vector<char> data(chunkSize);
-    f.read(data.data(), chunkSize);
+std::vector<unsigned char> AndroidBackup::chunkReader(std::ifstream& f, int chunkSize) {
+    std::vector<unsigned char> data(chunkSize);
+    f.read((char*)data.data(), chunkSize);
     int bytesRead = f.gcount();
     if (bytesRead == 0) {
         data.clear();
@@ -298,11 +326,11 @@ std::vector<char> AndroidBackup::chunkReader(std::ifstream& f, int chunkSize) {
 }
 
 /*
-* PBKDF2ÃÜÔ¿À©Õ¹º¯Êı£¬ÊôÓÚÒ»ÖÖ·ÀÖ¹ÃÜÂë±»±©Á¦ÆÆ½âµÄ·À·¶´ëÊ©¡£
-* ĞèÒªÉÔÎ¢ÁË½âÒ»µã ¼Ó½âÃÜÖªÊ¶£¬¾ßÌå¿ÉÒÔ°Ù¶Èpbkdf¼ÓÃÜ
+* PBKDF2å¯†é’¥æ‰©å±•å‡½æ•°ï¼Œå±äºä¸€ç§é˜²æ­¢å¯†ç è¢«æš´åŠ›ç ´è§£çš„é˜²èŒƒæªæ–½ã€‚
+* éœ€è¦ç¨å¾®äº†è§£ä¸€ç‚¹ åŠ è§£å¯†çŸ¥è¯†ï¼Œå…·ä½“å¯ä»¥ç™¾åº¦pbkdfåŠ å¯†
 * 
-* ²ÎÊı£ºÃÜÂë£¬ÃÜÂë³¤¶È£¬salt
-* ·µ»ØÖµ£ºÀ©Õ¹ºóµÄÃÜÔ¿
+* å‚æ•°ï¼šå¯†ç ï¼Œå¯†ç é•¿åº¦ï¼Œsalt
+* è¿”å›å€¼ï¼šæ‰©å±•åçš„å¯†é’¥
 */
 int AndroidBackup::pbkdf2(const char* password, int password_len, const byte* salt,
     int salt_len, int iterations, byte* out_key) 
@@ -314,8 +342,8 @@ int AndroidBackup::pbkdf2(const char* password, int password_len, const byte* sa
 
 
 /*
-* AES½âÃÜº¯Êı£¬»ùÓÚOPENSSL¼Ó½âÃÜ¿â
-* ²ÎÊıºÜ¼òµ¥£¬×Ô¼º¿´²ÎÊıÃû¾ÍÖªµÀÁË
+* AESè§£å¯†å‡½æ•°ï¼ŒåŸºäºOPENSSLåŠ è§£å¯†åº“
+* å‚æ•°å¾ˆç®€å•ï¼Œè‡ªå·±çœ‹å‚æ•°åå°±çŸ¥é“äº†
 */
 int AndroidBackup::aes_decrypt(byte* encryptdata, int len, byte* key, byte* iv, byte* output)
 {
@@ -323,7 +351,7 @@ int AndroidBackup::aes_decrypt(byte* encryptdata, int len, byte* key, byte* iv, 
     EVP_CIPHER_CTX* ctx;
     ctx = EVP_CIPHER_CTX_new();
     EVP_DecryptInit_ex(ctx, EVP_aes_256_cbc(), NULL, key, iv);
-    //½ûÓÃÌî³ä
+    //ç¦ç”¨å¡«å……
     EVP_CIPHER_CTX_set_padding(ctx, 0);
     //Decrypt
     int ilen = 0;
@@ -339,16 +367,16 @@ int AndroidBackup::aes_decrypt(byte* encryptdata, int len, byte* key, byte* iv, 
 
 
 /*
-* ½«Java byteÊı×é×ª³Éutf-16±àÂëÊı¾İ
-* ²Î¿¼¿ªÔ´ÏîÄ¿£ºhttps://github.com/lclevy/ab_decrypt/blob/master/ab_decrypt.py 
-* def masterKeyJavaConversion(k)  º¯Êı
+* å°†Java byteæ•°ç»„è½¬æˆutf-16ç¼–ç æ•°æ®
+* å‚è€ƒå¼€æºé¡¹ç›®ï¼šhttps://github.com/lclevy/ab_decrypt/blob/master/ab_decrypt.py 
+* def masterKeyJavaConversion(k)  å‡½æ•°
 */
 string AndroidBackup::masterKeyJavaConversion(vector<unsigned char> x)
 {
-    //1.½«ÎŞ·ûºÅcharÊı×é£¬×ª»»³ÉÓĞ·ûºÅµÄcharÊı×é
+    //1.å°†æ— ç¬¦å·charæ•°ç»„ï¼Œè½¬æ¢æˆæœ‰ç¬¦å·çš„charæ•°ç»„
     int len = x.size();
-    //printf("²½Öè1£º½«ÎŞ·ûºÅcharÊı×é£¬×ª»»³ÉÓĞ·ûºÅµÄcharÊı×é\n");
-    //printf("ÎŞ·ûºÅcharÊı×é:");
+    //printf("æ­¥éª¤1ï¼šå°†æ— ç¬¦å·charæ•°ç»„ï¼Œè½¬æ¢æˆæœ‰ç¬¦å·çš„charæ•°ç»„\n");
+    //printf("æ— ç¬¦å·charæ•°ç»„:");
     //------------------------------------------------------------
     //for (size_t i = 0; i < len; i++)
     //{
@@ -357,7 +385,7 @@ string AndroidBackup::masterKeyJavaConversion(vector<unsigned char> x)
     //printf("\n");
     //signed char toSigned[32] = { 0 };
     vector<signed char> toSigned(len);
-    /* printf("ÓĞ·ûºÅcharÊı×é:");*/
+    /* printf("æœ‰ç¬¦å·charæ•°ç»„:");*/
     for (size_t i = 0; i < len; i++)
     {
         toSigned[i] = (signed char)x[i];
@@ -365,10 +393,10 @@ string AndroidBackup::masterKeyJavaConversion(vector<unsigned char> x)
     }
     /* printf("\n");*/
 
-    //printf("\n²½Öè2£º½«ÓĞ·ûºÅµÄcharÊı×é×ª»»³ÉÎŞ·ûºÅµÄ16Î»Êı¾İ£¬byte¡¢word¡¢dword!\n");
+    //printf("\næ­¥éª¤2ï¼šå°†æœ‰ç¬¦å·çš„charæ•°ç»„è½¬æ¢æˆæ— ç¬¦å·çš„16ä½æ•°æ®ï¼Œbyteã€wordã€dword!\n");
     vector<wchar_t> toUnsigned16bits(len + 2);
     //wchar_t toUnsigned16bits[34] = { 0 };
-    //printf("ÎŞ·ûºÅwchatÊı×é:");
+    //printf("æ— ç¬¦å·wchatæ•°ç»„:");
     for (size_t i = 0; i < len; i++)
     {
         toUnsigned16bits[i] = (wchar_t)toSigned[i] & 0xffff;
@@ -377,32 +405,32 @@ string AndroidBackup::masterKeyJavaConversion(vector<unsigned char> x)
     toUnsigned16bits[32] = 0x00;
     toUnsigned16bits[33] = 0x00;
     //printf("\n");
-    //printf("\n²½Öè3£º½«ÎŞ·ûºÅµÄ16Î»Êı×é×ª»»³ÉbyteÊı×é\n");
-    //// Ò»Ğ©ÓÃÓÚ²âÊÔµÄ uint16_t Êı×é
-    //// ½« toUnsigned16bits ´ò°ü³É×Ö½Ú´®
+    //printf("\næ­¥éª¤3ï¼šå°†æ— ç¬¦å·çš„16ä½æ•°ç»„è½¬æ¢æˆbyteæ•°ç»„\n");
+    //// ä¸€äº›ç”¨äºæµ‹è¯•çš„ uint16_t æ•°ç»„
+    //// å°† toUnsigned16bits æ‰“åŒ…æˆå­—èŠ‚ä¸²
     //size_t size = sizeof(toUnsigned16bits) / sizeof(toUnsigned16bits[0]);
     //std::vector<uint16_t> vectoUnsigned16bits(toUnsigned16bits, toUnsigned16bits + size);
     //std::vector<uint8_t> packed_data =  pack_uint16_vector(vectoUnsigned16bits);
-    //// Êä³ö½á¹û
+    //// è¾“å‡ºç»“æœ
     //std::ostringstream oss;
     //oss << "Packed data: ";
     //for (const auto& byte_val : packed_data) {
     //    oss << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(byte_val) << " ";
     //}
     //std::cout << oss.str() << std::endl;
-    //printf("\n²½Öè4£º½«byteÊı×é·â×°³ÉwstringÀàĞÍ Utf16beÀàĞÍ\n");
+    //printf("\næ­¥éª¤4ï¼šå°†byteæ•°ç»„å°è£…æˆwstringç±»å‹ Utf16beç±»å‹\n");
     //wstring toUtf16be = decodeUtf16BE(packed_data);
-    //printf("\n²½Öè5£º½«wstringÀàĞÍµÄutf16be±àÂë×ª»»³Éutf8±àÂë\n");
+    //printf("\næ­¥éª¤5ï¼šå°†wstringç±»å‹çš„utf16beç¼–ç è½¬æ¢æˆutf8ç¼–ç \n");
     std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
     std::string utf8str = converter.to_bytes((wchar_t*)toUnsigned16bits.data());
     return utf8str;
 }
 
 /*
-* zlib½âÑ¹£¬»ùÓÚzlib½âÑ¹Ëõ¿âÊµÏÖ
+* zlibè§£å‹ï¼ŒåŸºäºzlibè§£å‹ç¼©åº“å®ç°
 *
-* ²ÎÊı£ºzlibÑ¹ËõÊı¾İ£¬zlibÑ¹ËõÑ¹ËõÊı¾İ´óĞ¡
-* ·µ»Ø£ºzlib½âÑ¹ºóµÄÊı¾İ
+* å‚æ•°ï¼šzlibå‹ç¼©æ•°æ®ï¼Œzlibå‹ç¼©å‹ç¼©æ•°æ®å¤§å°
+* è¿”å›ï¼šzlibè§£å‹åçš„æ•°æ®
 */
 int AndroidBackup::decompress(string tmptarFilePath,string tarFilePath)
 {
@@ -467,9 +495,9 @@ int AndroidBackup::decompress(string tmptarFilePath,string tarFilePath)
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
-//Ò»ÏÂ¶¼ÊÇÒ»Ğ©¹¦ÄÜĞÔµÄº¯Êı£¬ÎŞĞëÖªµÀ¾ßÌå´úÂëÊµÏÖ£¬Ö»ĞèÖªµÀ¸ÉÂïÓÃµÄ¾ÍĞĞ
+//ä¸€ä¸‹éƒ½æ˜¯ä¸€äº›åŠŸèƒ½æ€§çš„å‡½æ•°ï¼Œæ— é¡»çŸ¥é“å…·ä½“ä»£ç å®ç°ï¼Œåªéœ€çŸ¥é“å¹²å˜›ç”¨çš„å°±è¡Œ
 
-//°Ñhex¸ñÊ½µÄ×Ö·û´®£¬×ª³ÉbyteÊı×éÊı¾İµÄ
+//æŠŠhexæ ¼å¼çš„å­—ç¬¦ä¸²ï¼Œè½¬æˆbyteæ•°ç»„æ•°æ®çš„
 vector<byte> AndroidBackup::hexToBytes(const std::string& hex)
 {
     std::vector<byte> bytes;
@@ -480,7 +508,7 @@ vector<byte> AndroidBackup::hexToBytes(const std::string& hex)
     }
     return bytes;
 }
-//°ÑbyteÊı×é£¬×ª»»³Éhex¸ñÊ½×Ö·û´®µÄ
+//æŠŠbyteæ•°ç»„ï¼Œè½¬æ¢æˆhexæ ¼å¼å­—ç¬¦ä¸²çš„
 string* AndroidBackup::byteToHexStr(unsigned char byte_arr[], int arr_len)
 {
     string* hexstr = new string();
@@ -488,28 +516,28 @@ string* AndroidBackup::byteToHexStr(unsigned char byte_arr[], int arr_len)
     {
         char hex1;
         char hex2;
-        int value = byte_arr[i]; //Ö±½Ó½«unsigned char¸³Öµ¸øÕûĞÍµÄÖµ£¬ÏµÍ³»áÕı¶¯Ç¿ÖÆ×ª»»
+        int value = byte_arr[i]; //ç›´æ¥å°†unsigned charèµ‹å€¼ç»™æ•´å‹çš„å€¼ï¼Œç³»ç»Ÿä¼šæ­£åŠ¨å¼ºåˆ¶è½¬æ¢
         int v1 = value / 16;
         int v2 = value % 16;
 
-        //½«ÉÌ×ª³É×ÖÄ¸
+        //å°†å•†è½¬æˆå­—æ¯
         if (v1 >= 0 && v1 <= 9)
             hex1 = (char)(48 + v1);
         else
             hex1 = (char)(55 + v1);
 
-        //½«ÓàÊı×ª³É×ÖÄ¸
+        //å°†ä½™æ•°è½¬æˆå­—æ¯
         if (v2 >= 0 && v2 <= 9)
             hex2 = (char)(48 + v2);
         else
             hex2 = (char)(55 + v2);
 
-        //½«×ÖÄ¸Á¬½Ó³É´®
+        //å°†å­—æ¯è¿æ¥æˆä¸²
         *hexstr = *hexstr + hex1 + hex2;
     }
     return hexstr;
 }
-//ÅĞ¶ÏÂ·¾¶ÎÄ¼şÊÇ·ñ´æÔÚ
+//åˆ¤æ–­è·¯å¾„æ–‡ä»¶æ˜¯å¦å­˜åœ¨
 bool AndroidBackup::pathExists(const char* path)
 {
     DWORD attributes = GetFileAttributes(path);
